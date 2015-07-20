@@ -48,11 +48,32 @@ func scan_file_formatted (f *os.File, g *gelf.Gelf, host *string,
     }
 }
 
+func scan_file_json (f *os.File, g *gelf.Gelf, host *string,
+        facility *string) {
+    scanner := bufio.NewScanner(f)
+
+    for scanner.Scan() {
+        var m map[string]interface{}
+        raw_message := scanner.Text()
+        if err := json.Unmarshal([]byte(raw_message), &m); err != nil {
+            fmt.Println(err)
+        }
+        m["host"] = *host
+        m["facility"] = *facility
+        m["message"] = raw_message
+        b, _ := json.Marshal(m)
+        g.Log(string(b))
+    }
+}
+
 func scan_file (f *os.File, g *gelf.Gelf, host *string,
         facility *string, format *string) {
-    if *format == "" {
+    switch *format {
+    case "":
         scan_file_unformatted(f, g, host, facility)
-    } else {
+    case "json":
+        scan_file_json(f, g, host, facility)
+    default:
         scan_file_formatted(f, g, host, facility, format)
     }
 }
